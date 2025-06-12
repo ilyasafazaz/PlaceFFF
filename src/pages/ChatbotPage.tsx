@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, ChevronRight, ChevronLeft, MessageCircle, ThumbsUp, Share2, MoreHorizontal, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, ChevronRight, ChevronLeft, MessageCircle, ThumbsUp, Share2, MoreHorizontal, HelpCircle, ChevronDown, ChevronUp, Bot } from 'lucide-react';
 
 interface Agent {
   id: string;
@@ -14,6 +14,7 @@ interface Message {
   text: string;
   sender: 'user' | 'bot';
   timestamp: Date;
+  topic?: string;
 }
 
 interface TopicThread {
@@ -85,52 +86,6 @@ const topics = [
   'Support',
   'News'
 ];
-
-const sampleThreads: Record<string, TopicThread[]> = {
-  'Forum': [
-    {
-      id: '1',
-      title: 'Best practices for event planning',
-      author: {
-        name: 'Sarah Chen',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah',
-        role: 'Event Planner'
-      },
-      content: 'I\'ve been organizing events for 5 years and wanted to share some key insights...',
-      likes: 124,
-      replies: 45,
-      timestamp: '2 hours ago'
-    },
-    {
-      id: '2',
-      title: 'How to choose the perfect venue',
-      author: {
-        name: 'Michael Ross',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=michael',
-        role: 'Venue Coordinator'
-      },
-      content: 'The venue sets the tone for your entire event. Here\'s what to consider...',
-      likes: 89,
-      replies: 32,
-      timestamp: '4 hours ago'
-    }
-  ],
-  'Support': [
-    {
-      id: '3',
-      title: 'Common issues and solutions',
-      author: {
-        name: 'Tech Support Team',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=support',
-        role: 'Support Specialist'
-      },
-      content: 'Here are the most common issues users face and how to resolve them...',
-      likes: 156,
-      replies: 78,
-      timestamp: '1 day ago'
-    }
-  ]
-};
 
 const topicFAQs: Record<string, FAQ[]> = {
   'Forum': [
@@ -318,8 +273,9 @@ const ChatbotPage: React.FC = () => {
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [isTopicExpanded, setIsTopicExpanded] = useState(false);
-  const [viewMode, setViewMode] = useState<'threads' | 'faq'>('faq');
+  const [viewMode, setViewMode] = useState<'faq' | 'chat'>('faq');
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
+  const [topicInputMessage, setTopicInputMessage] = useState('');
 
   const handleSendMessage = () => {
     if (!inputMessage.trim()) return;
@@ -340,6 +296,32 @@ const ChatbotPage: React.FC = () => {
         text: `This is a response from ${selectedAgent?.name || 'the bot'} about ${selectedAbility || 'general topics'}`,
         sender: 'bot',
         timestamp: new Date()
+      };
+      setMessages(prev => [...prev, botResponse]);
+    }, 1000);
+  };
+
+  const handleTopicChatSend = () => {
+    if (!topicInputMessage.trim() || !selectedTopic) return;
+
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      text: topicInputMessage,
+      sender: 'user',
+      timestamp: new Date(),
+      topic: selectedTopic
+    };
+
+    setMessages([...messages, newMessage]);
+    setTopicInputMessage('');
+
+    setTimeout(() => {
+      const botResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        text: `I'm here to help you with ${selectedTopic} related questions. Based on your question about "${topicInputMessage}", let me provide you with detailed information. If you need more specific help, please feel free to ask follow-up questions.`,
+        sender: 'bot',
+        timestamp: new Date(),
+        topic: selectedTopic
       };
       setMessages(prev => [...prev, botResponse]);
     }, 1000);
@@ -384,104 +366,134 @@ const ChatbotPage: React.FC = () => {
     const categories = [...new Set(faqs.map(faq => faq.category))];
 
     return (
-      <div className="p-4">
-        <div className="mb-6">
-          <h3 className="text-xl font-semibold text-slate-800 mb-2">
-            {selectedTopic} - Frequently Asked Questions
-          </h3>
-          <p className="text-slate-600 text-sm">
-            Find answers to common questions about {selectedTopic.toLowerCase()}.
-          </p>
-        </div>
-
-        {categories.map(category => (
-          <div key={category} className="mb-8">
-            <h4 className="text-lg font-medium text-slate-700 mb-4 border-b border-slate-200 pb-2">
-              {category}
-            </h4>
-            <div className="space-y-3">
-              {faqs
-                .filter(faq => faq.category === category)
-                .map(faq => (
-                  <div key={faq.id} className="border border-slate-200 rounded-lg overflow-hidden">
-                    <button
-                      onClick={() => toggleFAQ(faq.id)}
-                      className="w-full px-4 py-3 text-left bg-white hover:bg-slate-50 transition-colors flex items-center justify-between"
-                    >
-                      <span className="font-medium text-slate-800 pr-4">{faq.question}</span>
-                      {expandedFAQ === faq.id ? (
-                        <ChevronUp size={20} className="text-slate-500 flex-shrink-0" />
-                      ) : (
-                        <ChevronDown size={20} className="text-slate-500 flex-shrink-0" />
-                      )}
-                    </button>
-                    {expandedFAQ === faq.id && (
-                      <div className="px-4 py-3 bg-slate-50 border-t border-slate-200">
-                        <p className="text-slate-700 mb-3">{faq.answer}</p>
-                        <div className="flex items-center justify-between">
-                          <button className="flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600 transition-colors">
-                            <ThumbsUp size={16} />
-                            <span>Helpful ({faq.helpful})</span>
-                          </button>
-                          <span className="text-xs text-slate-500">
-                            Category: {faq.category}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-            </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4">
+          <div className="mb-6">
+            <h3 className="text-xl font-semibold text-slate-800 mb-2">
+              {selectedTopic} - Frequently Asked Questions
+            </h3>
+            <p className="text-slate-600 text-sm">
+              Find answers to common questions about {selectedTopic.toLowerCase()}. Need more help? Switch to chat mode for detailed assistance.
+            </p>
           </div>
-        ))}
+
+          {categories.map(category => (
+            <div key={category} className="mb-8">
+              <h4 className="text-lg font-medium text-slate-700 mb-4 border-b border-slate-200 pb-2">
+                {category}
+              </h4>
+              <div className="space-y-3">
+                {faqs
+                  .filter(faq => faq.category === category)
+                  .map(faq => (
+                    <div key={faq.id} className="border border-slate-200 rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => toggleFAQ(faq.id)}
+                        className="w-full px-4 py-3 text-left bg-white hover:bg-slate-50 transition-colors flex items-center justify-between"
+                      >
+                        <span className="font-medium text-slate-800 pr-4">{faq.question}</span>
+                        {expandedFAQ === faq.id ? (
+                          <ChevronUp size={20} className="text-slate-500 flex-shrink-0" />
+                        ) : (
+                          <ChevronDown size={20} className="text-slate-500 flex-shrink-0" />
+                        )}
+                      </button>
+                      {expandedFAQ === faq.id && (
+                        <div className="px-4 py-3 bg-slate-50 border-t border-slate-200">
+                          <p className="text-slate-700 mb-3">{faq.answer}</p>
+                          <div className="flex items-center justify-between">
+                            <button className="flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600 transition-colors">
+                              <ThumbsUp size={16} />
+                              <span>Helpful ({faq.helpful})</span>
+                            </button>
+                            <span className="text-xs text-slate-500">
+                              Category: {faq.category}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
 
-  const renderThreadContent = () => {
-    if (!selectedTopic || !sampleThreads[selectedTopic]) {
+  const renderTopicChatContent = () => {
+    if (!selectedTopic) {
       return (
         <div className="p-6 text-center">
-          <MessageCircle size={48} className="mx-auto text-slate-300 mb-4" />
-          <h3 className="text-lg font-medium text-slate-500 mb-2">No Threads Available</h3>
-          <p className="text-slate-400">No discussion threads found for this topic.</p>
+          <Bot size={48} className="mx-auto text-slate-300 mb-4" />
+          <h3 className="text-lg font-medium text-slate-500 mb-2">Topic Chat</h3>
+          <p className="text-slate-400">Select a topic to start chatting about it.</p>
         </div>
       );
     }
 
+    // Filter messages for the current topic
+    const topicMessages = messages.filter(msg => msg.topic === selectedTopic);
+
     return (
-      <div className="p-4">
-        {sampleThreads[selectedTopic].map(thread => (
-          <div key={thread.id} className="mb-6 bg-white rounded-lg border border-slate-200 p-4">
-            <div className="flex items-start gap-3 mb-3">
-              <img
-                src={thread.author.avatar}
-                alt={thread.author.name}
-                className="w-10 h-10 rounded-full"
-              />
-              <div>
-                <h4 className="font-medium text-slate-900">{thread.author.name}</h4>
-                <p className="text-xs text-slate-500">{thread.author.role}</p>
+      <div className="flex flex-col h-full">
+        <div className="p-4 border-b border-slate-200">
+          <h3 className="text-lg font-semibold text-slate-800 mb-1">
+            {selectedTopic} - AI Assistant
+          </h3>
+          <p className="text-sm text-slate-600">
+            Ask detailed questions about {selectedTopic.toLowerCase()}. I'm here to help with specific queries not covered in the FAQ.
+          </p>
+        </div>
+
+        {/* Chat Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {topicMessages.length === 0 ? (
+            <div className="text-center py-8">
+              <Bot size={40} className="mx-auto text-slate-300 mb-3" />
+              <p className="text-slate-500 mb-2">Start a conversation about {selectedTopic}</p>
+              <p className="text-sm text-slate-400">Ask me anything related to {selectedTopic.toLowerCase()} - I'm here to help!</p>
+            </div>
+          ) : (
+            topicMessages.map(message => (
+              <div
+                key={message.id}
+                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                    message.sender === 'user'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-slate-800 border border-slate-200'
+                  }`}
+                >
+                  {message.text}
+                </div>
               </div>
-            </div>
-            <h3 className="text-lg font-medium text-slate-900 mb-2">{thread.title}</h3>
-            <p className="text-slate-600 mb-4">{thread.content}</p>
-            <div className="flex items-center gap-4 text-sm text-slate-500">
-              <button className="flex items-center gap-1 hover:text-blue-600">
-                <ThumbsUp size={16} />
-                <span>{thread.likes}</span>
-              </button>
-              <button className="flex items-center gap-1 hover:text-blue-600">
-                <MessageCircle size={16} />
-                <span>{thread.replies}</span>
-              </button>
-              <button className="flex items-center gap-1 hover:text-blue-600">
-                <Share2 size={16} />
-              </button>
-              <span className="ml-auto text-xs">{thread.timestamp}</span>
-            </div>
+            ))
+          )}
+        </div>
+
+        {/* Chat Input */}
+        <div className="p-4 border-t border-slate-200">
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              value={topicInputMessage}
+              onChange={(e) => setTopicInputMessage(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleTopicChatSend()}
+              placeholder={`Ask me about ${selectedTopic.toLowerCase()}...`}
+              className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <button
+              onClick={handleTopicChatSend}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Send size={18} />
+            </button>
           </div>
-        ))}
+        </div>
       </div>
     );
   };
@@ -567,7 +579,7 @@ const ChatbotPage: React.FC = () => {
 
         {/* Chat Messages - Adjusted height to leave space for input */}
         <div className="overflow-y-auto p-6 space-y-4" style={{ height: 'calc(100vh - 180px)' }}>
-          {messages.map(message => (
+          {messages.filter(msg => !msg.topic).map(message => (
             <div
               key={message.id}
               className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -623,7 +635,7 @@ const ChatbotPage: React.FC = () => {
         </div>
 
         {isTopicExpanded ? (
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 flex flex-col overflow-hidden">
             {selectedTopic && (
               <div className="p-4 border-b border-slate-200">
                 <div className="flex gap-2">
@@ -639,22 +651,22 @@ const ChatbotPage: React.FC = () => {
                     FAQ
                   </button>
                   <button
-                    onClick={() => setViewMode('threads')}
+                    onClick={() => setViewMode('chat')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      viewMode === 'threads'
+                      viewMode === 'chat'
                         ? 'bg-blue-100 text-blue-700'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
-                    <MessageCircle size={16} className="inline mr-2" />
-                    Threads
+                    <Bot size={16} className="inline mr-2" />
+                    Chat
                   </button>
                 </div>
               </div>
             )}
             
             {selectedTopic ? (
-              viewMode === 'faq' ? renderFAQContent() : renderThreadContent()
+              viewMode === 'faq' ? renderFAQContent() : renderTopicChatContent()
             ) : (
               <div className="p-6 text-center">
                 <h3 className="text-lg font-medium text-slate-500 mb-2">Select a Topic</h3>
